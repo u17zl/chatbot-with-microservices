@@ -1,0 +1,118 @@
+swagger: "2.0"
+info:
+  description: "timeslot service"
+  version: "1.0.0"
+  title: "Dentist Reservation Timeslot Service"
+  license:
+    name: MIT
+host: api.chatbot.au
+basePath: /v1
+schemes:
+  - http
+  - https
+consumes:
+  - application/json
+produces:
+  - application/json
+paths:
+  /timeslots/{id}:
+    get:
+      operationId: get_timeslots_by_id
+      summary: Get availble time slots for every dentist
+      parameters:
+        - in: path
+          name: id
+          required: true
+          type: integer
+          description: ID of the dentist.
+      tags: 
+        - Appointments
+      responses:
+        200:
+          description: OK
+          schema:
+            type: array
+            items:
+              $ref: "#/definitions/Timeslot"
+        404:
+          description: Id not found.
+          schema:
+            $ref: '#/definitions/Error'
+            
+    post:
+      operationId: book_timeslots_by_id
+      summary: Book an appointment
+      parameters:
+        - in: path
+          name: id
+          required: true
+          type: integer
+          description: ID of the dentist.
+        - in: query
+          name: time
+          required: true
+          type: string
+          description: Time.
+      tags: 
+        - Appointments
+      responses:
+        200:
+          description: OK
+             
+        400:
+          description: Not Booked
+          schema:
+            $ref: '#/definitions/Error'
+            
+    delete:
+      operationId: cancel_timeslots_by_id
+      summary: Cancel an appointment
+      parameters:
+        - in: path
+          name: id
+          required: true
+          type: integer
+          description: ID of the dentist.
+        - in: query
+          name: time
+          required: true
+          type: string
+          description: Time.
+
+      tags: 
+        - Appointments
+      responses:
+        200:
+          description: OK
+             
+        400:
+          description: Not Canceled
+          schema:
+            $ref: '#/definitions/Error'
+
+definitions:
+  Timeslot:
+    type: object
+    properties:
+      time:
+        type: string
+        description: "time"
+        example: "9:00 am"
+
+  Error:
+    type: object
+    properties:
+      code:
+        type: string
+      message:
+        type: string
+    required:
+      - code
+      - message
+      
+responses:
+  NotFound:
+    description: The specified ID was not correct
+    schema:
+      $ref: '#/definitions/Error'
+  
