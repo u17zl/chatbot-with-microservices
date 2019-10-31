@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="zh">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dentist Reservation Chatbot</title>
+    <link rel="stylesheet" type="text/css" href="css/normalize.css" />
+    <link rel="stylesheet" type="text/css" href="css/default.css" />
+    <link rel="stylesheet" type="text/css" href="css/styles.css" />
+    <!-- <link rel="stylesheet" type="text/css" href="css/bootstrap.min.css"> -->
+  </head>
+
+  <body>
+    <div class="htmleaf-container">
+      <div class="htmleaf-content bgcolor-3">
+        <div id="chatbox">
+          <div id="chatview" class="p1">
+            <div id="profile">
+              <div id="close">
+                <div class="cy"></div>
+                <div class="cx"></div>
+              </div>
+              <p>Smile Dental</p>
+              <span>chatbot@smiledental.com</span>
+            </div>
+            <div id="chat-messages">
+              <label>Thursday 02</label>
+              <div class="message">
+                <img src="img/chatbot.jpg" />
+                <div class="bubble">
+                  Hi there! I am lovely SmileDental Chatbot! How can I help you?
+                  <div class="corner"></div>
+                </div>
+              </div>
+              <div id="choice-box">
+                <div class="choice-btn">Dentists Information</div>
+                <div class="choice-btn">Timeslots Booking</div>
+                <div class="choice-btn">Timeslots Cancel</div>
+              </div>
+            </div>
+            <div id="sendmessage">
+              <input type="text" value="Send message..." />
+              <button id="send"></button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script src="js/jquery-1.11.0.min.js"></script>
+    <!-- <script src="js/bootstrap.min.js"></script> -->
+    <script>
+      var current_step = "greeting";
+      const store = {
+        message: "",
+        time: "",
+        detail: {
+          id: 1,
+          name: "",
+          location: "",
+          specialization: ""
+        }
+      };
+      $(document).ready(function() {
+        $("#sendmessage input").focus(function() {
+          if ($(this).val() == "Send message...") {
+            $(this).val("");
+          }
+        });
+        $("#sendmessage input").focusout(function() {
+          if ($(this).val() == "") {
+            $(this).val("Send message...");
+          }
+        });
+        $("#chatview").fadeIn();
+        // console.log(currentDay);
+        var date = new Date();
+        var currentDay = date.getDay();
+        switch (currentDay) {
+          case 0:
+            currentDay = "Sunday";
+            break;
+          case 1:
+            currentDay = "Monday";
+            break;
+          case 2:
+            currentDay = "Thuesday";
+            break;
+          case 3:
+            currentDay = "Wednesday";
+            break;
+          case 4:
+            currentDay = "Thursday";
+            break;
+          case 5:
+            currentDay = "Friday";
+            break;
+          case 6:
+            currentDay = "SaturDay";
+            break;
+          default:
+            console.log("not match");
+        }
+        console.log(currentDay);
+        var currentDate = date.toLocaleDateString();
+        $("#chat-messages label").html(`${currentDate} ${currentDay}`);
+        scrollDown();
+      });
+
+      // let scroll always bottom
+      function scrollDown() {
+        $("#chat-messages").animate(
+          { scrollTop: $("#chat-messages").prop("scrollHeight") },
+          500
+        );
+      }
+
+      //send user message
+      function userMessage(text) {
+        return `<div class="message right">
+      	<img src="img/user.jpg" />
+          <div class="bubble">
+          	${text}
+              <div class="corner"></div>
+          </div>
+      </div>`;
+      }
+
+      //send bot message
+      function botMessage(text) {
+        return `<div class="message">
+         	<img src="img/chatbot.jpg" />
+             <div class="bubble">
+             	${text}
+                 <div class="corner"></div>
+             </div>
+         </div>`;
+      }
+
+      //loading icon
+      function loadingUp() {
+        let loading = `<img id="loading" src="img/loading.gif" />`;
+        $("#chat-messages").append(loading);
+        scrollDown();
+      }
+
+      function loadingDown() {
+        $("#loading").remove();
+      }
+      //loading icon end
+      async function handleMessage(mes) {
+        if (mes == "Dentists Information") {
+          let reply = await fetchData({
+            message: "handleInfo",
+            details: [{}]
+          });
+          console.log(reply);
+          console.log(dentists_template(reply.details));
+          $("#chat-messages").append(dentists_template(reply.details));
+          scrollDown();
+          current_step = "dentistInfo";
+        } else if (mes == "Timeslots Booking") {
+          $("#chat-messages").append(
+            dentists_book_template(["Dr. Alex", "Dr. Lee"])
+          );
+          scrollDown();
+          current_step = "timeSlotsBooking";
+        } else if (mes == "Timeslots Cancel") {
+          if (store.time == "") {
+            $("#chat-messages").append(botMessage("You have not booked yet"));
+            $("#chat-messages").append(greeting_template());
+            scrollDown();
+            store[time] = "";
+            store[details] = [{}];
+            current_step = "greeting";
+          } else {
+            $("#chat-messages").append(
+              cancel_template(store.time, store.detail.name)
+            );
+            scrollDown();
+            current_step = "cancel_1";
+          }
+        } else if (mes == "Yes") {
+          if (current_step == "cancel_1") {
+            let reply = await fetchData({
+              message: "handleCancel",
+              details: { time: store.time, id: store.detail.id }
+            });
+            console.log(reply);
+            $("#chat-messages").append(cancel_confirm_template());
+            $("#chat-messages").append(service_template());
+            scrollDown();
+            store[time] = "";
+            store[details] = [{}];
+            current_step = "greeting";
+          }
+          if (current_step == "infoBookConfirm") {
+            let reply = await fetchData({
+              message: "handleAvailableTime",
+              details: [{ time: store.time, id: store.detail.id }]
+            });
+            console.log(reply);
+            $("#chat-messages").append(
+              available_template(reply, store.detail.name)
+            );
+            scrollDown();
+          }
+        } else if (mes == "No") {
+          if (current_step == "cancel_1") {
+            $("#chat-messages").append(greeting_template());
+            scrollDown();
+            store[time] = "";
+            store[details] = [{}];
+            current_step = "greeting";
+          }
+        } else if (mes == "Dr. Alex" || mes == "Dr. Lee") {
+          if (current_step == "dentistInfo") {
+            console.log("dentistInfo");
+            let reply = await fetchData({
+              message: "handleInfo",
+              details: [{}]
+            });
+            console.log(reply);
+            for (x in reply.details) {
+              console.log(reply.details[x].name);
+              console.log(store);
+              if (mes == reply.details[x].name) {
+                store.detail.id = reply.details[x].id;
+                store.detail.name = reply.details[x].name;
+                store.detail.location = reply.details[x].location;
+                store.detail.specialization = reply.details[x].specialization;
+              }
+            }
+            $("#chat-messages").append(dentistInfo_template(store.detail));
+            scrollDown();
+            current_step = "infoBookConfirm";
+          } else if (current_step == "timeSlotsBooking") {
+            let reply = await fetchData({
+              message: "handleInfoOfOne",
+              details: [{ name: mes }]
+            });
+            console.log(reply);
+            for (x in reply.details) {
+              console.log(reply.details[x].name);
+              console.log(store);
+              if (mes == reply.details[x].name) {
+                store.detail.id = reply.details[x].id;
+                store.detail.name = reply.details[x].name;
+                store.detail.location = reply.details[x].location;
+                store.detail.specialization = reply.details[x].specialization;
+              }
+            }
+            reply = await fetchData({
+              message: "handleAvailableTime",
+              details: [{ id: store.detail.id }]
+            });
+            $("#chat-messages").append(
+              available_template(reply, store.detail.name)
+            );
+            scrollDown();
+          }
+        } else if (
+          mes == "9:00 am" ||
+          mes == "10:00 am" ||
+          mes == "11:00 am" ||
+          mes == "12:00 pm" ||
+          mes == "13:00 pm" ||
+          mes == "14:00 pm" ||
+          mes == "15:00 pm" ||
+          mes == "16:00 pm" ||
+          mes == "17:00 pm"
+        ) {
+          store.time = mes;
+          $("#chat-messages").append(
+            booking_template(store.time, store.detail.name)
+          );
+          scrollDown();
+          current_step = "timeConfirmed";
+        } else if (mes == "Confirm") {
+          if (current_step == "timeConfirmed") {
+            let reply = await fetchData({
+              message: "handleBooking",
+              details: [{ time: store.time, id: store.detail.id }]
+            });
+            console.log(reply);
+            $("#chat-messages").append(
+              booking_confirm_template(store.time, store.detail.name)
+            );
+            $("#chat-messages").append(service_template());
+            scrollDown();
+            current_step = "bookConfirmed";
+          }
+        } else {
+          let reply = await fetchData({
+            message: mes,
+            details: [{}]
+          });
+          console.log(reply);
+          $("#chat-messages").append(greeting_template());
+          scrollDown();
+        }
+      }
+      //user click button
+      $("#send").click(function() {
+        console.log("click");
+        var message = $("#sendmessage input").val();
+        if (message === "Send message..." || message === "") {
+          return;
+        }
+        $("#chat-messages").append(userMessage(message));
+        $("#sendmessage input").val("Send message...");
+        scrollDown();
+        console.log(message, "messs");
+        handleMessage(message);
+      });
+
+      //user press enter
+      $(document).keydown(function(event) {
+        if (event.keyCode == 13) {
+          var message = $("#sendmessage input").val();
+          if (message === "Send message..." || message === "") {
+            return;
+          }
+          $("#chat-messages").append(userMessage(message));
+          $("#sendmessage input").val("");
+          scrollDown();
+          console.log(message, "messs");
+          handleMessage(message);
+        }
+      });
+
+      $(".choice-btn").click(function() {
+        console.log("btnclick");
+        let message = $(this).html();
+        $("#chat-messages").append(userMessage(message));
+        $("#sendmessage input").val("Send message...");
+        scrollDown();
+
+        handleMessage(message);
+        // console.log(reply);
+        console.log("coming");
+      });
+
+      // handel step by step
+      function step(res) {
+        switch (res.message) {
+          case "greeting":
+            $("#chat-messages").append(greeting_template());
+            break;
+          case "info":
+            $("#chat-messages").append(
+              dentists_template(res.detainsdentistList)
+            );
+            break;
+          case "info":
+            $("#chat-messages").append(
+              dentists_template(res.detainsdentistList)
+            );
+            break;
+          case "info":
+            $("#chat-messages").append(
+              dentists_template(res.detainsdentistList)
+            );
+            break;
+          case "info":
+            $("#chat-messages").append(
+              dentists_template(res.detainsdentistList)
+            );
+            break;
+        }
+      }
+      // fetch data from chatbot backend
+      function fetchData(data) {
+        const url = "http://127.0.0.1:5000/v1/say";
+        console.log(data, "body");
+        loadingUp();
+        return new Promise((resolve, reject) => {
+          fetch(url, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json;charset=utf-8"
+            },
+
+            body: JSON.stringify(data)
+          })
+            .then(res => {
+              console.log(res);
+              return res.json();
+            })
+            .then(data => {
+              loadingDown();
+              console.log(data);
+
+              resolve(data);
+            })
+            .catch(err => {
+              reject(err);
+              console.log(err);
+            });
+        });
+      }
+      function toJson(message, details) {
+        const json = { message: message, details: details };
+        console.log(json);
+        return JSON.stringify(json);
+      }
+
+      // template of reply
+      function greeting_template() {
+        return `<div class="message">
+                <img src="img/chatbot.jpg" />
+                <div class="bubble">
+                  Hello! How can I help you?
+                  <div class="corner"></div>
+                </div>
+              </div>
+              <div id="choice-box">
+                <div class="choice-btn">Dentists Information</div>
+                <div class="choice-btn">Timeslots Booking</div>
+                <div class="choice-btn">Timeslots Cancel</div>
+              </div>`;
+      }
+      function dentists_template(dentistList) {
+        let list = `<div class="choice-btn">${
+          dentistList[0].name
+        }</div><div class="choice-btn">${dentistList[1].name}</div>`;
+        console.log(dentistList);
+        console.log(list);
+        return `<div class="message">
+                <img src="img/chatbot.jpg" />
+                <div class="bubble">
+                  Here is the list of dentists, who do you want to know about?
+                  <div class="corner"></div>
+                </div>
+              </div>
+              <div id="choice-box">
+              ${list}
+              </div>`;
+      }
+      function dentists_book_template(dentistList) {
+        let list = "";
+        list = `<div class="choice-btn">${
+          dentistList[0]
+        }</div><div class="choice-btn">${dentistList[1]}</div>`;
+        return `<div class="message">
+                <img src="img/chatbot.jpg" />
+                <div class="bubble">
+                  Here is the list of dentists, who do you want to book?
+                  <div class="corner"></div>
+                </div>
+              </div>
+              <div id="choice-box">
+              ${list}
+              </div>`;
+      }
+
+      function dentistInfo_template(dentist) {
+        return `<div class="message">
+                <img src="img/chatbot.jpg" />
+                <div class="bubble">
+                  ${dentist.name} 's Information:</br>
+                  Location: ${dentist.location}</br>
+                  Specialization: ${dentist.specialization}</br>
+                  <div class="corner"></div>
+                </div>
+              </div>
+              <div class="message">
+                <img src="img/chatbot.jpg" />
+                <div class="bubble">
+                  Do you want to book this Dentist?
+                  <div class="corner"></div>
+                </div>
+              </div>
+              <div id="choice-box">
+                <div class="choice-btn">Yes</div>
+                <div class="choice-btn">No</div>
+              </div>`;
+      }
+      function available_template(timeslots, name) {
+        list = "";
+        console.log(timeslots.details);
+        timeslots.details.map(time => {
+          list += `<div class="choice-btn">${time.time}</div>`;
+        });
+        return `<div class="message">
+                <img src="img/chatbot.jpg" />
+                <div class="bubble">
+                  Available time of ${name}
+                  <div class="corner"></div>
+                </div>
+              </div>
+              <div id="choice-box">
+                ${list}
+              </div>`;
+      }
+      function booking_template(time, name) {
+        return `<div class="message">
+                <img src="img/chatbot.jpg" />
+                <div class="bubble">
+                  Booking ${name} at ${time}
+                  <div class="corner"></div>
+                </div>
+              </div>
+              <div id="choice-box">
+                <div class="choice-btn">Confirm</div>
+                <div class="choice-btn">Cancel</div>
+              </div>`;
+      }
+      function booking_confirm_template(time, name) {
+        return `<div class="message">
+                <img src="img/chatbot.jpg" />
+                <div class="bubble">
+                  Congrats! You have booked ${name} at ${time}
+                  <div class="corner"></div>
+                </div>
+              </div>`;
+      }
+      function service_template() {
+        return `<div class="message">
+                <img src="img/chatbot.jpg" />
+                <div class="bubble">
+                  Do you need other services?
+                  <div class="corner"></div>
+                </div>
+              </div>
+              <div id="choice-box">
+                <div class="choice-btn">Dentists Information</div>
+                <div class="choice-btn">Timeslots Booking</div>
+                <div class="choice-btn">Timeslots Cancel</div>
+                <div class="choice-btn">Nothing</div>
+              </div>`;
+      }
+      function cancel_template(time, name) {
+        return `<div class="message">
+                <img src="img/chatbot.jpg" />
+                <div class="bubble">
+                  You have booked ${name} at ${time}
+                  Do you want to cancel it?
+                  <div class="corner"></div>
+                </div>
+              </div>
+              <div id="choice-box">
+                <div class="choice-btn">Yes</div>
+                <div class="choice-btn">No</div>
+              </div>`;
+      }
+      function cancel_confirm_template() {
+        return `<div class="message">
+                <img src="img/chatbot.jpg" />
+                <div class="bubble">
+                  Cancel successfully!
+                  <div class="corner"></div>
+                </div>
+              </div>`;
+      }
+      function bye_template() {
+        return `<div class="message">
+                <img src="img/chatbot.jpg" />
+                <div class="bubble">
+                  See you next time!
+                  <div class="corner"></div>
+                </div>
+              </div>`;
+      }
+    </script>
+  </body>
+</html>
