@@ -1,0 +1,70 @@
+swagger: "2.0"
+info:
+  version: 1.0.0
+  title: Chatbot Api
+  license:
+    name: MIT
+host: api.chatbot.au
+basePath: /v1
+schemes:
+  - http
+  - https
+consumes:
+  - application/json
+produces:
+  - application/json
+tags:
+- name: "say"
+  description: "message from user"
+paths:
+  /say:
+    post:
+      summary: post the message
+      operationId: post_say
+      tags:
+        - say
+      parameters:
+        - in: body
+          name: payload
+          description: message from user
+          schema:
+            $ref: '#/definitions/message'
+      responses:
+        "200":
+          description: ok
+          schema:
+            $ref: '#/definitions/message'
+        "400":
+          description: Bad Request
+
+    
+definitions:
+        
+  message:
+    type: object
+    properties:
+      message:
+        type: string
+        description: meesage text
+        example: 'Hello Kevin!'
+      details:
+        type: array
+        items:
+          type: object
+          description: details in message
+          properties:
+            id: 
+              type: integer
+              example: 1
+            time:
+              type: string
+              example: "13:00 pm"
+            location:
+              type: string
+              example: "Randwick"
+            name:
+              type: string
+              example: "Dr. Lee"
+            specialization:
+              type: string
+              example: "Paediatric Dentistry"
